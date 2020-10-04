@@ -3,17 +3,37 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'dino-game-layout.dart';
+
 void main() {
   runApp(MyApp());
 }
 
-List<String> OBSTACLES = [
-  "cacti_group.png",
-  "cacti_large_1.png",
-  "cacti_large_2.png",
-  "cacti_small_1.png",
-  "cacti_small_2.png",
-  "cacti_small_3.png",
+List<Sprite> OBSTACLES = [
+  Sprite()
+    ..imagePath = "cacti_group.png"
+    ..imageWidth = 104
+    ..imageHeight = 100,
+  Sprite()
+    ..imagePath = "cacti_large_1.png"
+    ..imageWidth = 50
+    ..imageHeight = 100,
+  Sprite()
+    ..imagePath = "cacti_large_2.png"
+    ..imageWidth = 98
+    ..imageHeight = 100,
+  Sprite()
+    ..imagePath = "cacti_small_1.png"
+    ..imageWidth = 34
+    ..imageHeight = 70,
+  Sprite()
+    ..imagePath = "cacti_small_2.png"
+    ..imageWidth = 68
+    ..imageHeight = 70,
+  Sprite()
+    ..imagePath = "cacti_small_3.png"
+    ..imageWidth = 107
+    ..imageHeight = 70,
 ];
 
 class MyApp extends StatelessWidget {
@@ -61,30 +81,28 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class Obstacle {
-  String obstacle;
-  double location;
-}
-
 class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   AnimationController dinoController;
   Animation<int> dinoFrame;
   Animation<double> dinoY;
 
-  List<Obstacle> obstacles = [
-    Obstacle()
+  List<PlacedObstacle> obstacles = [
+    PlacedObstacle()
       ..location = 200
       ..obstacle = OBSTACLES[0],
-    Obstacle()
+    PlacedObstacle()
       ..location = 400
       ..obstacle = OBSTACLES[1],
-    Obstacle()
+    PlacedObstacle()
       ..location = 650
       ..obstacle = OBSTACLES[2]
   ];
 
   double runDistance = 0;
   bool isRunning = false;
+  bool isDead = false;
+
+  Timer runningTimer;
 
   @override
   void initState() {
@@ -106,6 +124,32 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       dinoFrame = StepTween(begin: 3, end: 5).animate(dinoController);
       dinoY = AlwaysStoppedAnimation(0);
       isRunning = true;
+      if (runningTimer == null) {
+        runningTimer = Timer.periodic(Duration(milliseconds: 100), (_) {
+          setState(() {
+            runDistance += 3;
+          });
+          DinoGameLayout layout = DinoGameLayout(MediaQuery.of(context).size);
+          for (PlacedObstacle obstacle in obstacles) {
+            Rect obstacleRect =
+                layout.getObstacleRect(obstacle, runDistance).deflate(10);
+            if (layout
+                .getDinoRect(dinoY.value)
+                .deflate(10)
+                .overlaps(obstacleRect)) {
+              _die();
+            }
+          }
+        });
+      }
+    });
+  }
+
+  void _die() {
+    setState(() {
+      runningTimer.cancel();
+      isRunning = false;
+      isDead = true;
     });
   }
 
@@ -115,7 +159,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     }
     setState(() {
       dinoController = AnimationController(
-          vsync: this, duration: Duration(milliseconds: 300));
+          vsync: this, duration: Duration(milliseconds: 400));
       dinoFrame = AlwaysStoppedAnimation(1);
       dinoY = Tween(begin: 0.0, end: 200.0)
           .chain(CurveTween(curve: Curves.easeOutQuad))
@@ -137,6 +181,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
+    DinoGameLayout layout = DinoGameLayout(screenSize);
     List<Widget> children = [
       Positioned(
         bottom: screenSize.height / 3,
@@ -164,10 +209,12 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       AnimatedBuilder(
           animation: dinoController,
           builder: (context, child) {
-            runDistance += 4;
+            Rect dinoRect = layout.getDinoRect(dinoY.value);
             return Positioned(
-              left: screenSize.width / 5,
-              bottom: screenSize.height / 3 + dinoY.value,
+              left: dinoRect.left,
+              top: dinoRect.top,
+              width: dinoRect.width,
+              height: dinoRect.height,
               child: Image.asset(
                 "assets/images/dino/dino_${dinoFrame.value}.png",
                 gaplessPlayback: true,
@@ -175,16 +222,22 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             );
           }),
     ];
-    for (Obstacle obstacle in obstacles) {
+    for (PlacedObstacle obstacle in obstacles) {
+      Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
       children.add(
         Positioned(
-          bottom: screenSize.height / 3,
-          left: (obstacle.location - runDistance) * 10,
+          top: obstacleRect.top,
+          left: obstacleRect.left,
+          width: obstacleRect.width,
+          height: obstacleRect.height,
           child: Image.asset(
-            "assets/images/cacti/${obstacle.obstacle}",
+            "assets/images/cacti/${obstacle.obstacle.imagePath}",
           ),
         ),
       );
+    }
+    if (isDead) {
+      children.add(Text("DED", style: TextStyle(fontSize: 36)));
     }
     return Scaffold(
       appBar: AppBar(
