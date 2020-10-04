@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -90,12 +91,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     PlacedObstacle()
       ..location = 200
       ..obstacle = OBSTACLES[0],
-    PlacedObstacle()
-      ..location = 400
-      ..obstacle = OBSTACLES[1],
-    PlacedObstacle()
-      ..location = 650
-      ..obstacle = OBSTACLES[2]
   ];
 
   double runDistance = 0;
@@ -131,11 +126,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           for (PlacedObstacle obstacle in obstacles) {
             Rect obstacleRect =
                 layout.getObstacleRect(obstacle, runDistance).deflate(10);
-            if (layout
-                .getDinoRect(dinoY.value)
-                .deflate(10)
-                .overlaps(obstacleRect)) {
+            Rect dinoRect = layout.getDinoRect(dinoY.value);
+            if (dinoRect.deflate(10).overlaps(obstacleRect)) {
               _die();
+            } else {
+              if (obstacleRect.right + 200 < dinoRect.left) {
+                obstacles.remove(obstacle);
+
+                final _random = new Random();
+                obstacles.add(PlacedObstacle()
+                  ..obstacle = OBSTACLES[_random.nextInt(OBSTACLES.length)]
+                  ..location = runDistance + _random.nextInt(200) + 100.0);
+              }
             }
           }
         });
