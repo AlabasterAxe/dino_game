@@ -107,9 +107,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    dinoController = AnimationController(vsync: this);
-    dinoFrame = AlwaysStoppedAnimation(1);
-    dinoY = AlwaysStoppedAnimation(0.0);
+    _reset();
   }
 
   void _run() {
@@ -148,8 +146,22 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   void _die() {
     setState(() {
       runningTimer.cancel();
+      dinoController.stop();
+      dinoFrame = AlwaysStoppedAnimation(6);
       isRunning = false;
       isDead = true;
+    });
+  }
+
+  void _reset() {
+    setState(() {
+      runDistance = 0;
+      isRunning = false;
+      isDead = false;
+      dinoController = AnimationController(vsync: this);
+      dinoFrame = AlwaysStoppedAnimation(1);
+      dinoY = AlwaysStoppedAnimation(0.0);
+      runningTimer = null;
     });
   }
 
@@ -206,21 +218,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         top: 0,
         child: Text("$runDistance", style: GoogleFonts.vt323(fontSize: 36)),
       ),
-      AnimatedBuilder(
-          animation: dinoController,
-          builder: (context, child) {
-            Rect dinoRect = layout.getDinoRect(dinoY.value);
-            return Positioned(
-              left: dinoRect.left,
-              top: dinoRect.top,
-              width: dinoRect.width,
-              height: dinoRect.height,
-              child: Image.asset(
-                "assets/images/dino/dino_${dinoFrame.value}.png",
-                gaplessPlayback: true,
-              ),
-            );
-          }),
     ];
     for (PlacedObstacle obstacle in obstacles) {
       Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
@@ -236,9 +233,29 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         ),
       );
     }
+    children.add(AnimatedBuilder(
+        animation: dinoController,
+        builder: (context, child) {
+          Rect dinoRect = layout.getDinoRect(dinoY.value);
+          return Positioned(
+            left: dinoRect.left,
+            top: dinoRect.top,
+            width: dinoRect.width,
+            height: dinoRect.height,
+            child: Image.asset(
+              "assets/images/dino/dino_${dinoFrame.value}.png",
+              gaplessPlayback: true,
+            ),
+          );
+        }));
+
     if (isDead) {
-      children.add(Text("DED", style: TextStyle(fontSize: 36)));
+      children.add(Align(
+        alignment: Alignment.center,
+        child: Text("GAME OVER", style: GoogleFonts.vt323(fontSize: 48)),
+      ));
     }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -250,9 +267,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _jump,
-        tooltip: 'Increment',
-        child: Icon(Icons.arrow_upward),
+        onPressed: isDead ? _reset : _jump,
+        tooltip: isDead ? 'Reset' : 'Jump',
+        child: Icon(isDead ? Icons.refresh : Icons.arrow_upward),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
