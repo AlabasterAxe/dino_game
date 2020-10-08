@@ -6,15 +6,22 @@ class Sprite {
   int imageHeight;
 }
 
+class GameObject {
+  bool collidable;
+  List<Sprite> frames;
+  double frequency;
+}
+
 Sprite dino = Sprite()
   // basically a placeholder because we do the sprite animations separately
   ..imagePath = "dino/dino_1.png"
   ..imageWidth = 88
   ..imageHeight = 94;
 
-class PlacedObstacle {
-  Sprite obstacle;
-  double location;
+class PlacedObject {
+  GameObject object;
+  Offset location;
+  Offset velocity;
 }
 
 class DinoGameLayout {
@@ -34,11 +41,13 @@ class DinoGameLayout {
     return dinoRectBaseline.shift(Offset(0, -jumpOffset));
   }
 
-  Rect getObstacleRect(PlacedObstacle obstacle, double runDistance) {
+  Rect getObstacleRect(PlacedObject obstacle, double runDistance) {
     return Rect.fromLTWH(
-        (obstacle.location - runDistance) * 10,
-        4 / 7 * screenSize.height - obstacle.obstacle.imageHeight,
-        dino.imageWidth.toDouble(),
-        dino.imageHeight.toDouble());
+        (obstacle.location.dx - runDistance) * 10,
+        4 / 7 * screenSize.height -
+            obstacle.object.frames[0].imageHeight -
+            obstacle.location.dy,
+        obstacle.object.frames[0].imageWidth.toDouble(),
+        obstacle.object.frames[0].imageHeight.toDouble());
   }
 }

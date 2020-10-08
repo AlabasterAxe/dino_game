@@ -10,34 +10,78 @@ void main() {
   runApp(MyApp());
 }
 
-List<Sprite> OBSTACLES = [
-  Sprite()
-    ..imagePath = "cacti_group.png"
-    ..imageWidth = 104
-    ..imageHeight = 100,
-  Sprite()
-    ..imagePath = "cacti_large_1.png"
-    ..imageWidth = 50
-    ..imageHeight = 100,
-  Sprite()
-    ..imagePath = "cacti_large_2.png"
-    ..imageWidth = 98
-    ..imageHeight = 100,
-  Sprite()
-    ..imagePath = "cacti_small_1.png"
-    ..imageWidth = 34
-    ..imageHeight = 70,
-  Sprite()
-    ..imagePath = "cacti_small_2.png"
-    ..imageWidth = 68
-    ..imageHeight = 70,
-  Sprite()
-    ..imagePath = "cacti_small_3.png"
-    ..imageWidth = 107
-    ..imageHeight = 70,
+List<GameObject> CACTI = [
+  GameObject()
+    ..frames = [
+      Sprite()
+        ..imagePath = "assets/images/cacti/cacti_group.png"
+        ..imageWidth = 104
+        ..imageHeight = 100,
+    ]
+    ..collidable = true
+    ..frequency = 1,
+  GameObject()
+    ..frames = [
+      Sprite()
+        ..imagePath = "assets/images/cacti/cacti_large_1.png"
+        ..imageWidth = 50
+        ..imageHeight = 100,
+    ]
+    ..collidable = true
+    ..frequency = 1,
+  GameObject()
+    ..frames = [
+      Sprite()
+        ..imagePath = "assets/images/cacti/cacti_large_2.png"
+        ..imageWidth = 98
+        ..imageHeight = 100,
+    ]
+    ..collidable = true
+    ..frequency = 1,
+  GameObject()
+    ..frames = [
+      Sprite()
+        ..imagePath = "assets/images/cacti/cacti_small_1.png"
+        ..imageWidth = 34
+        ..imageHeight = 70,
+    ]
+    ..collidable = true
+    ..frequency = 1,
+  GameObject()
+    ..frames = [
+      Sprite()
+        ..imagePath = "assets/images/cacti/cacti_small_2.png"
+        ..imageWidth = 68
+        ..imageHeight = 70,
+    ]
+    ..collidable = true
+    ..frequency = 1,
+  GameObject()
+    ..frames = [
+      Sprite()
+        ..imagePath = "assets/images/cacti/cacti_small_3.png"
+        ..imageWidth = 107
+        ..imageHeight = 70,
+    ]
+    ..collidable = true
+    ..frequency = 1,
 ];
 
-const int GRAVITY_PPSPS = 600;
+GameObject PTERA = GameObject()
+  ..frames = [
+    Sprite()
+      ..imagePath = "assets/images/ptera/ptera_1.png"
+      ..imageHeight = 80
+      ..imageWidth = 92,
+    Sprite()
+      ..imagePath = "assets/images/ptera/ptera_2.png"
+      ..imageHeight = 80
+      ..imageWidth = 92,
+  ]
+  ..collidable = true
+  ..frequency = 5;
+
+const int GRAVITY_PPSPS = 2000;
 const double RUN_SPEED_ACC_PPSPS = .1;
 
 class MyApp extends StatelessWidget {
@@ -101,10 +145,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   bool jumpButtonHeld = false;
   Random rand = Random();
 
-  List<PlacedObstacle> obstacles = [
-    PlacedObstacle()
-      ..location = 200
-      ..obstacle = OBSTACLES[0],
+  List<PlacedObject> obstacles = [
+    PlacedObject()
+      ..location = Offset(200, 0)
+      ..object = CACTI[0],
   ];
 
   double runDistance = 0;
@@ -144,7 +188,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       dinoState = DinoState.running;
     }
 
-    for (PlacedObstacle obstacle in obstacles) {
+    for (PlacedObject obstacle in obstacles) {
       Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
       Rect dinoRect = layout.getDinoRect(dinoY);
       if (dinoRect.deflate(15).overlaps(obstacleRect.deflate(15))) {
@@ -153,9 +197,22 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       if (obstacleRect.right < dinoRect.left - 200) {
         setState(() {
           obstacles.remove(obstacle);
-          obstacles.add(PlacedObstacle()
-            ..location = runDistance + rand.nextInt(100) + 100
-            ..obstacle = OBSTACLES[rand.nextInt(OBSTACLES.length)]);
+          if (runDistance < 200) {
+            obstacles.add(PlacedObject()
+              ..location = Offset(runDistance + rand.nextInt(100) + 50, 0)
+              ..object = CACTI[rand.nextInt(CACTI.length)]);
+          } else {
+            if (rand.nextDouble() > .5) {
+              obstacles.add(PlacedObject()
+                ..location = Offset(runDistance + rand.nextInt(100) + 50, 0)
+                ..object = CACTI[rand.nextInt(CACTI.length)]);
+            } else {
+              obstacles.add(PlacedObject()
+                ..location = Offset(runDistance + rand.nextInt(100) + 100,
+                    rand.nextInt(100).toDouble())
+                ..object = PTERA);
+            }
+          }
         });
       }
     }
@@ -165,7 +222,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         dinoFrame = 6;
         break;
       case DinoState.running:
-        dinoFrame = (currentElapsedTimeMillis / 200).floor() % 2 + 3;
+        dinoFrame = (currentElapsedTimeMillis / 100).floor() % 2 + 3;
         break;
       case DinoState.jumping:
         dinoFrame = 1;
@@ -186,9 +243,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       dinoY = 0.0;
       dinodY = 0.0;
       obstacles = [
-        PlacedObstacle()
-          ..location = 200
-          ..obstacle = OBSTACLES[0],
+        PlacedObject()
+          ..location = Offset(200, 0)
+          ..object = CACTI[0],
       ];
     });
   }
@@ -200,12 +257,12 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       }
       setState(() {
         jumpButtonHeld = true;
-        dinodY = 350;
+        dinodY = 650;
         dinoState = DinoState.jumping;
         dinoFrame = 1;
         dinoY = .01;
       });
-      Timer(Duration(milliseconds: 300), _cancelJump);
+      Timer(Duration(milliseconds: 200), _cancelJump);
     }
   }
 
@@ -266,12 +323,22 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             );
           }),
     ];
-    for (PlacedObstacle obstacle in obstacles) {
+    for (PlacedObject obstacle in obstacles) {
       children.add(
         AnimatedBuilder(
             animation: worldController,
             child: Image.asset(
-              "assets/images/cacti/${obstacle.obstacle.imagePath}",
+              obstacle
+                  .object
+                  .frames[worldController.isAnimating
+                      ? (worldController.lastElapsedDuration.inMilliseconds /
+                                  1000 *
+                                  obstacle.object.frequency)
+                              .floor() %
+                          obstacle.object.frames.length
+                      : 0]
+                  .imagePath,
+              gaplessPlayback: true,
             ),
             builder: (context, child) {
               Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
