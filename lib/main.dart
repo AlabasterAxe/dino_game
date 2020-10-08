@@ -141,7 +141,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     dinoY = max(dinoY + dinodY * elapsedSeconds, 0);
     if (dinoY > 0 && !jumpButtonHeld) {
       dinodY -= GRAVITY_PPSPS * elapsedSeconds;
-    } else {
+    }
+    if (dinoY <= 0) {
       dinoState = DinoState.running;
     }
 
@@ -149,7 +150,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       Rect obstacleRect =
           layout.getObstacleRect(obstacle, runDistance).deflate(10);
       if (layout.getDinoRect(dinoY).deflate(10).overlaps(obstacleRect)) {
-        dinoState = DinoState.dead;
+        _die();
       }
     }
 
@@ -188,13 +189,20 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       }
       setState(() {
         jumpButtonHeld = true;
-        dinodY = 300;
+        dinodY = 250;
         dinoState = DinoState.jumping;
         dinoFrame = 1;
         dinoY = .01;
       });
       Timer(Duration(milliseconds: 300), _cancelJump);
     }
+  }
+
+  void _die() {
+    setState(() {
+      worldController.stop();
+      dinoState = DinoState.dead;
+    });
   }
 
   void _cancelJump() {
@@ -248,7 +256,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           }),
     ];
     for (PlacedObstacle obstacle in obstacles) {
-      Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
       children.add(
         AnimatedBuilder(
             animation: worldController,
@@ -256,6 +263,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               "assets/images/cacti/${obstacle.obstacle.imagePath}",
             ),
             builder: (context, child) {
+              Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
               return Positioned(
                   top: obstacleRect.top,
                   left: obstacleRect.left,
@@ -283,7 +291,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
     if (dinoState == DinoState.dead) {
       children.add(Align(
-        alignment: Alignment.center,
+        alignment: Alignment(0, -.5),
         child: Text("GAME OVER", style: GoogleFonts.vt323(fontSize: 48)),
       ));
     }
@@ -295,10 +303,16 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         height: screenSize.height / 4,
         child: GestureDetector(
             onTapDown: (_) {
-              _jump();
+              if (dinoState != DinoState.dead) {
+                _jump();
+              }
             },
             onTapUp: (_) {
-              _cancelJump();
+              if (dinoState != DinoState.dead) {
+                _cancelJump();
+              } else {
+                _reset();
+              }
             },
             child: Container(color: Colors.green))));
 
