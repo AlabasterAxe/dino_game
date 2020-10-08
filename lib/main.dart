@@ -37,7 +37,7 @@ List<Sprite> OBSTACLES = [
     ..imageHeight = 70,
 ];
 
-const int GRAVITY_PPSPS = 100;
+const int GRAVITY_PPSPS = 300;
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -97,6 +97,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   double dinoY = 0;
   double dinodY = 0;
   int lastUpdateCallMillis = 0;
+  bool jumpButtonHeld = false;
 
   List<PlacedObstacle> obstacles = [
     PlacedObstacle()
@@ -138,7 +139,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         ((currentElapsedTimeMillis - lastUpdateCallMillis) / 1000);
 
     dinoY = max(dinoY + dinodY * elapsedSeconds, 0);
-    if (dinoY > 0) {
+    if (dinoY > 0 && !jumpButtonHeld) {
       dinodY -= GRAVITY_PPSPS * elapsedSeconds;
     } else {
       dinoState = DinoState.running;
@@ -170,18 +171,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     lastUpdateCallMillis = currentElapsedTimeMillis;
   }
 
-  void _run() {
-    setState(() {
-      dinoState = DinoState.running;
-    });
-  }
-
-  void _die() {
-    setState(() {
-      dinoState = DinoState.dead;
-    });
-  }
-
   void _reset() {
     setState(() {
       runDistance = 0;
@@ -193,15 +182,25 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   }
 
   void _jump() {
-    if (!worldController.isAnimating) {
-      worldController.forward(from: 0);
-    }
-    if (dinoState == DinoState.running) {
+    if ([DinoState.standing, DinoState.running].contains(dinoState)) {
+      if (!worldController.isAnimating) {
+        worldController.forward(from: 0);
+      }
       setState(() {
-        dinodY = 100;
+        jumpButtonHeld = true;
+        dinodY = 300;
         dinoState = DinoState.jumping;
+        dinoFrame = 1;
+        dinoY = .01;
       });
+      Timer(Duration(milliseconds: 300), _cancelJump);
     }
+  }
+
+  void _cancelJump() {
+    setState(() {
+      jumpButtonHeld = false;
+    });
   }
 
   @override
@@ -289,6 +288,20 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       ));
     }
 
+    children.add(Positioned(
+        bottom: 20,
+        left: 20,
+        right: 20,
+        height: screenSize.height / 4,
+        child: GestureDetector(
+            onTapDown: (_) {
+              _jump();
+            },
+            onTapUp: (_) {
+              _cancelJump();
+            },
+            child: Container(color: Colors.green))));
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -299,12 +312,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           children: children,
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: dinoState == DinoState.dead ? _reset : _jump,
-        tooltip: dinoState == DinoState.dead ? 'Reset' : 'Jump',
-        child: Icon(
-            dinoState == DinoState.dead ? Icons.refresh : Icons.arrow_upward),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
