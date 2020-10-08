@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -35,6 +36,8 @@ List<Sprite> OBSTACLES = [
     ..imageWidth = 107
     ..imageHeight = 70,
 ];
+
+const int GRAVITY_PPSPS = 100;
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -81,10 +84,19 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
+enum DinoState {
+  running,
+  jumping,
+  dead,
+  standing,
+}
+
 class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
-  AnimationController dinoController;
-  Animation<int> dinoFrame;
-  Animation<double> dinoY;
+  AnimationController worldController;
+  int dinoFrame = 1;
+  double dinoY = 0;
+  double dinodY = 0;
+  int lastUpdateCallMillis = 0;
 
   List<PlacedObstacle> obstacles = [
     PlacedObstacle()
@@ -99,95 +111,97 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   ];
 
   double runDistance = 0;
-  bool isRunning = false;
-  bool isDead = false;
-
-  Timer runningTimer;
+  DinoState dinoState = DinoState.standing;
 
   @override
   void initState() {
     super.initState();
+    worldController =
+        AnimationController(vsync: this, duration: Duration(days: 99));
+
+    worldController.addListener(_update);
+
     _reset();
   }
 
-  void _run() {
-    if (dinoController != null) {
-      dinoController.dispose();
+  void _update() {
+    if (!worldController.isAnimating) {
+      return;
     }
-    setState(() {
-      dinoController = AnimationController(
-          vsync: this, duration: Duration(milliseconds: 200));
-      dinoController.repeat();
+    int currentElapsedTimeMillis =
+        worldController.lastElapsedDuration.inMilliseconds;
+    runDistance = (currentElapsedTimeMillis / 100).floorToDouble();
 
-      dinoFrame = StepTween(begin: 3, end: 5).animate(dinoController);
-      dinoY = AlwaysStoppedAnimation(0);
-      isRunning = true;
-      if (runningTimer == null) {
-        runningTimer = Timer.periodic(Duration(milliseconds: 100), (_) {
-          setState(() {
-            runDistance += 3;
-          });
-          DinoGameLayout layout = DinoGameLayout(MediaQuery.of(context).size);
-          for (PlacedObstacle obstacle in obstacles) {
-            Rect obstacleRect =
-                layout.getObstacleRect(obstacle, runDistance).deflate(10);
-            if (layout
-                .getDinoRect(dinoY.value)
-                .deflate(10)
-                .overlaps(obstacleRect)) {
-              _die();
-            }
-          }
-        });
+    DinoGameLayout layout = DinoGameLayout(MediaQuery.of(context).size);
+
+    double elapsedSeconds =
+        ((currentElapsedTimeMillis - lastUpdateCallMillis) / 1000);
+
+    dinoY = max(dinoY + dinodY * elapsedSeconds, 0);
+    if (dinoY > 0) {
+      dinodY -= GRAVITY_PPSPS * elapsedSeconds;
+    } else {
+      dinoState = DinoState.running;
+    }
+
+    for (PlacedObstacle obstacle in obstacles) {
+      Rect obstacleRect =
+          layout.getObstacleRect(obstacle, runDistance).deflate(10);
+      if (layout.getDinoRect(dinoY).deflate(10).overlaps(obstacleRect)) {
+        dinoState = DinoState.dead;
       }
+    }
+
+    switch (dinoState) {
+      case DinoState.dead:
+        dinoFrame = 6;
+        break;
+      case DinoState.running:
+        dinoFrame = (currentElapsedTimeMillis / 200).floor() % 2 + 3;
+        break;
+      case DinoState.jumping:
+        dinoFrame = 1;
+        break;
+      case DinoState.standing:
+        dinoFrame = 1;
+        break;
+    }
+
+    lastUpdateCallMillis = currentElapsedTimeMillis;
+  }
+
+  void _run() {
+    setState(() {
+      dinoState = DinoState.running;
     });
   }
 
   void _die() {
     setState(() {
-      runningTimer.cancel();
-      dinoController.stop();
-      dinoFrame = AlwaysStoppedAnimation(6);
-      isRunning = false;
-      isDead = true;
+      dinoState = DinoState.dead;
     });
   }
 
   void _reset() {
     setState(() {
       runDistance = 0;
-      isRunning = false;
-      isDead = false;
-      dinoController = AnimationController(vsync: this);
-      dinoFrame = AlwaysStoppedAnimation(1);
-      dinoY = AlwaysStoppedAnimation(0.0);
-      runningTimer = null;
+      dinoState = DinoState.standing;
+      dinoFrame = 1;
+      dinoY = 0.0;
+      dinodY = 0.0;
     });
   }
 
   void _jump() {
-    if (dinoController != null) {
-      dinoController.dispose();
+    if (!worldController.isAnimating) {
+      worldController.forward(from: 0);
     }
-    setState(() {
-      dinoController = AnimationController(
-          vsync: this, duration: Duration(milliseconds: 400));
-      dinoFrame = AlwaysStoppedAnimation(1);
-      dinoY = Tween(begin: 0.0, end: 200.0)
-          .chain(CurveTween(curve: Curves.easeOutQuad))
-          .animate(dinoController);
-      dinoController.addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          dinoController.reverse();
-          dinoController.addStatusListener((status) {
-            if (status == AnimationStatus.dismissed) {
-              _run();
-            }
-          });
-        }
+    if (dinoState == DinoState.running) {
+      setState(() {
+        dinodY = 100;
+        dinoState = DinoState.jumping;
       });
-      dinoController.forward();
-    });
+    }
   }
 
   @override
@@ -195,61 +209,80 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     Size screenSize = MediaQuery.of(context).size;
     DinoGameLayout layout = DinoGameLayout(screenSize);
     List<Widget> children = [
-      Positioned(
-        bottom: screenSize.height / 3,
-        left: -((runDistance * 10) % 2400),
-        height: 20,
-        child: Image.asset(
-          "assets/images/scenery.png",
-          fit: BoxFit.cover,
-        ),
-      ),
-      Positioned(
-        bottom: screenSize.height / 3,
-        left: -((runDistance * 10) % 2400) + 2400 - screenSize.width,
-        height: 20,
-        child: Image.asset(
-          "assets/images/scenery.png",
-          fit: BoxFit.cover,
-        ),
-      ),
-      Positioned(
-        right: 0,
-        top: 0,
-        child: Text("$runDistance", style: GoogleFonts.vt323(fontSize: 36)),
-      ),
+      AnimatedBuilder(
+          animation: worldController,
+          child: Image.asset(
+            "assets/images/scenery.png",
+            fit: BoxFit.cover,
+          ),
+          builder: (context, child) {
+            return Positioned(
+              bottom: screenSize.height / 3,
+              left: -((runDistance * 10) % 2400),
+              height: 20,
+              child: child,
+            );
+          }),
+      AnimatedBuilder(
+          animation: worldController,
+          child: Image.asset(
+            "assets/images/scenery.png",
+            fit: BoxFit.cover,
+          ),
+          builder: (context, child) {
+            return Positioned(
+              bottom: screenSize.height / 3,
+              left: -((runDistance * 10) % 2400) + 2400 - screenSize.width,
+              height: 20,
+              child: child,
+            );
+          }),
+      AnimatedBuilder(
+          animation: worldController,
+          builder: (context, child) {
+            return Positioned(
+              right: 0,
+              top: 0,
+              child:
+                  Text("$runDistance", style: GoogleFonts.vt323(fontSize: 36)),
+            );
+          }),
     ];
     for (PlacedObstacle obstacle in obstacles) {
       Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
       children.add(
-        Positioned(
-          top: obstacleRect.top,
-          left: obstacleRect.left,
-          width: obstacleRect.width,
-          height: obstacleRect.height,
-          child: Image.asset(
-            "assets/images/cacti/${obstacle.obstacle.imagePath}",
-          ),
-        ),
+        AnimatedBuilder(
+            animation: worldController,
+            child: Image.asset(
+              "assets/images/cacti/${obstacle.obstacle.imagePath}",
+            ),
+            builder: (context, child) {
+              return Positioned(
+                  top: obstacleRect.top,
+                  left: obstacleRect.left,
+                  width: obstacleRect.width,
+                  height: obstacleRect.height,
+                  child: child);
+            }),
       );
     }
     children.add(AnimatedBuilder(
-        animation: dinoController,
+        animation: worldController,
         builder: (context, child) {
-          Rect dinoRect = layout.getDinoRect(dinoY.value);
+          Rect dinoRect = layout.getDinoRect(dinoY);
           return Positioned(
             left: dinoRect.left,
             top: dinoRect.top,
             width: dinoRect.width,
             height: dinoRect.height,
             child: Image.asset(
-              "assets/images/dino/dino_${dinoFrame.value}.png",
+              "assets/images/dino/dino_${dinoFrame}.png",
               gaplessPlayback: true,
             ),
           );
         }));
 
-    if (isDead) {
+    if (dinoState == DinoState.dead) {
       children.add(Align(
         alignment: Alignment.center,
         child: Text("GAME OVER", style: GoogleFonts.vt323(fontSize: 48)),
@@ -267,9 +300,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: isDead ? _reset : _jump,
-        tooltip: isDead ? 'Reset' : 'Jump',
-        child: Icon(isDead ? Icons.refresh : Icons.arrow_upward),
+        onPressed: dinoState == DinoState.dead ? _reset : _jump,
+        tooltip: dinoState == DinoState.dead ? 'Reset' : 'Jump',
+        child: Icon(
+            dinoState == DinoState.dead ? Icons.refresh : Icons.arrow_upward),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
