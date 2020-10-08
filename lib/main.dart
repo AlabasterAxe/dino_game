@@ -37,7 +37,8 @@ List<Sprite> OBSTACLES = [
     ..imageHeight = 70,
 ];
 
-const int GRAVITY_PPSPS = 300;
+const int GRAVITY_PPSPS = 600;
+const double RUN_SPEED_ACC_PPSPS = .1;
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -98,20 +99,16 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   double dinodY = 0;
   int lastUpdateCallMillis = 0;
   bool jumpButtonHeld = false;
+  Random rand = Random();
 
   List<PlacedObstacle> obstacles = [
     PlacedObstacle()
       ..location = 200
       ..obstacle = OBSTACLES[0],
-    PlacedObstacle()
-      ..location = 400
-      ..obstacle = OBSTACLES[1],
-    PlacedObstacle()
-      ..location = 650
-      ..obstacle = OBSTACLES[2]
   ];
 
   double runDistance = 0;
+  double runSpeed = 30;
   DinoState dinoState = DinoState.standing;
 
   @override
@@ -131,12 +128,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     }
     int currentElapsedTimeMillis =
         worldController.lastElapsedDuration.inMilliseconds;
-    runDistance = (currentElapsedTimeMillis / 100).floorToDouble();
-
-    DinoGameLayout layout = DinoGameLayout(MediaQuery.of(context).size);
-
     double elapsedSeconds =
         ((currentElapsedTimeMillis - lastUpdateCallMillis) / 1000);
+
+    runDistance = max(runDistance + runSpeed * elapsedSeconds, 0);
+    runSpeed += RUN_SPEED_ACC_PPSPS * elapsedSeconds;
+
+    DinoGameLayout layout = DinoGameLayout(MediaQuery.of(context).size);
 
     dinoY = max(dinoY + dinodY * elapsedSeconds, 0);
     if (dinoY > 0 && !jumpButtonHeld) {
@@ -147,10 +145,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     }
 
     for (PlacedObstacle obstacle in obstacles) {
-      Rect obstacleRect =
-          layout.getObstacleRect(obstacle, runDistance).deflate(10);
-      if (layout.getDinoRect(dinoY).deflate(10).overlaps(obstacleRect)) {
+      Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
+      Rect dinoRect = layout.getDinoRect(dinoY);
+      if (dinoRect.deflate(15).overlaps(obstacleRect.deflate(15))) {
         _die();
+      }
+      if (obstacleRect.right < dinoRect.left - 200) {
+        setState(() {
+          obstacles.remove(obstacle);
+          obstacles.add(PlacedObstacle()
+            ..location = runDistance + rand.nextInt(100) + 100
+            ..obstacle = OBSTACLES[rand.nextInt(OBSTACLES.length)]);
+        });
       }
     }
 
@@ -179,6 +185,11 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       dinoFrame = 1;
       dinoY = 0.0;
       dinodY = 0.0;
+      obstacles = [
+        PlacedObstacle()
+          ..location = 200
+          ..obstacle = OBSTACLES[0],
+      ];
     });
   }
 
@@ -189,7 +200,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       }
       setState(() {
         jumpButtonHeld = true;
-        dinodY = 250;
+        dinodY = 350;
         dinoState = DinoState.jumping;
         dinoFrame = 1;
         dinoY = .01;
@@ -250,8 +261,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             return Positioned(
               right: 0,
               top: 0,
-              child:
-                  Text("$runDistance", style: GoogleFonts.vt323(fontSize: 36)),
+              child: Text("${runDistance.floor()}",
+                  style: GoogleFonts.vt323(fontSize: 36)),
             );
           }),
     ];
@@ -298,8 +309,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
     children.add(Positioned(
         bottom: 20,
-        left: 20,
-        right: 20,
+        left: 40,
+        right: 40,
         height: screenSize.height / 4,
         child: GestureDetector(
             onTapDown: (_) {
@@ -307,14 +318,26 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 _jump();
               }
             },
-            onTapUp: (_) {
-              if (dinoState != DinoState.dead) {
-                _cancelJump();
-              } else {
+            onTap: () {
+              if (dinoState == DinoState.dead) {
                 _reset();
               }
             },
-            child: Container(color: Colors.green))));
+            onTapUp: (_) {
+              if (dinoState != DinoState.dead) {
+                _cancelJump();
+              }
+            },
+            child: InkWell(
+              child: Ink(
+                  decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black, width: 2),
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Center(
+                      child: Text(
+                          dinoState == DinoState.dead ? "Reset" : "Jump",
+                          style: GoogleFonts.vt323(fontSize: 48)))),
+            ))));
 
     return Scaffold(
       appBar: AppBar(
