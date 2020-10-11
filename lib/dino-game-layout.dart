@@ -30,7 +30,7 @@ class DinoGameLayout {
 
   DinoGameLayout(Size screenSize) {
     this.dinoRectBaseline = Rect.fromLTWH(
-        screenSize.width / 5,
+        screenSize.width / 10,
         4 / 7 * screenSize.height - dino.imageHeight,
         dino.imageWidth.toDouble(),
         dino.imageHeight.toDouble());
@@ -49,5 +49,15 @@ class DinoGameLayout {
             obstacle.location.dy,
         obstacle.object.frames[0].imageWidth.toDouble(),
         obstacle.object.frames[0].imageHeight.toDouble());
+  }
+
+  Rect getCloudRect(PlacedObject cloud, double runDistance) {
+    return Rect.fromLTWH(
+        (cloud.location.dx - runDistance) * 2,
+        2 / 7 * screenSize.height -
+            cloud.object.frames[0].imageHeight -
+            cloud.location.dy,
+        cloud.object.frames[0].imageWidth.toDouble(),
+        cloud.object.frames[0].imageHeight.toDouble());
   }
 }

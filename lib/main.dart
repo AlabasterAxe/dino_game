@@ -10,6 +10,12 @@ void main() {
   runApp(MyApp());
 }
 
+Sprite dino = Sprite()
+  // basically a placeholder because we do the sprite animations separately
+  ..imagePath = "dino/dino_1.png"
+  ..imageWidth = 88
+  ..imageHeight = 94;
+
 List<GameObject> CACTI = [
   GameObject()
     ..frames = [
@@ -81,8 +87,18 @@ GameObject PTERA = GameObject()
   ..collidable = true
   ..frequency = 5;
 
+GameObject CLOUD = GameObject()
+  ..frames = [
+    Sprite()
+      ..imagePath = "assets/images/cloud.png"
+      ..imageHeight = 27
+      ..imageWidth = 92,
+  ]
+  ..collidable = false
+  ..frequency = 1;
+
 const int GRAVITY_PPSPS = 2000;
-const double RUN_SPEED_ACC_PPSPS = .1;
+const double RUN_SPEED_ACC_PPSPS = .2;
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -145,15 +161,14 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   bool jumpButtonHeld = false;
   Random rand = Random();
 
-  List<PlacedObject> obstacles = [
-    PlacedObject()
-      ..location = Offset(200, 0)
-      ..object = CACTI[0],
-  ];
+  List<PlacedObject> obstacles;
+
+  List<PlacedObject> scenery;
 
   double runDistance = 0;
   double runSpeed = 30;
   DinoState dinoState = DinoState.standing;
+  double best = 0;
 
   @override
   void initState() {
@@ -194,7 +209,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       if (dinoRect.deflate(15).overlaps(obstacleRect.deflate(15))) {
         _die();
       }
-      if (obstacleRect.right < dinoRect.left - 200) {
+      if (obstacleRect.right < 0) {
         setState(() {
           obstacles.remove(obstacle);
           if (runDistance < 200) {
@@ -213,6 +228,21 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 ..object = PTERA);
             }
           }
+        });
+      }
+    }
+
+    for (PlacedObject sceneObject in scenery) {
+      Rect cloudRect = layout.getCloudRect(sceneObject, runDistance);
+      if (cloudRect.right < 0) {
+        setState(() {
+          scenery.remove(sceneObject);
+          scenery.add(
+            PlacedObject()
+              ..location = Offset(runDistance + rand.nextInt(200) + 200,
+                  rand.nextInt(100) - 10.0)
+              ..object = CLOUD,
+          );
         });
       }
     }
@@ -237,6 +267,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
   void _reset() {
     setState(() {
+      if (runDistance > best) {
+        best = runDistance;
+      }
       runDistance = 0;
       dinoState = DinoState.standing;
       dinoFrame = 1;
@@ -246,6 +279,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         PlacedObject()
           ..location = Offset(200, 0)
           ..object = CACTI[0],
+      ];
+
+      scenery = [
+        PlacedObject()
+          ..location = Offset(10, 0)
+          ..object = CLOUD,
+        PlacedObject()
+          ..location = Offset(200, 0)
+          ..object = CLOUD,
+        PlacedObject()
+          ..location = Offset(500, 0)
+          ..object = CLOUD,
       ];
     });
   }
@@ -277,6 +322,20 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     setState(() {
       jumpButtonHeld = false;
     });
+  }
+
+  String _buttonText() {
+    switch (dinoState) {
+      case DinoState.running:
+      case DinoState.jumping:
+        return "Jump";
+      case DinoState.dead:
+        return "Reset";
+      case DinoState.standing:
+        return "Start";
+      default:
+        return "Jump";
+    }
   }
 
   @override
@@ -317,29 +376,51 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           builder: (context, child) {
             return Positioned(
               right: 0,
+              left: 0,
               top: 0,
-              child: Text("${runDistance.floor()}",
-                  style: GoogleFonts.vt323(fontSize: 36)),
+              height: screenSize.height / 5,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Text("${runDistance.floor()}",
+                      style: GoogleFonts.vt323(fontSize: 36)),
+                ],
+              ),
             );
           }),
     ];
-    for (PlacedObject obstacle in obstacles) {
+    for (PlacedObject sceneObject in scenery) {
       children.add(
         AnimatedBuilder(
             animation: worldController,
             child: Image.asset(
-              obstacle
+              sceneObject
                   .object
                   .frames[worldController.isAnimating
                       ? (worldController.lastElapsedDuration.inMilliseconds /
                                   1000 *
-                                  obstacle.object.frequency)
+                                  sceneObject.object.frequency)
                               .floor() %
-                          obstacle.object.frames.length
+                          sceneObject.object.frames.length
                       : 0]
                   .imagePath,
               gaplessPlayback: true,
             ),
+            builder: (context, child) {
+              Rect obstacleRect = layout.getCloudRect(sceneObject, runDistance);
+              return Positioned(
+                  top: obstacleRect.top,
+                  left: obstacleRect.left,
+                  width: obstacleRect.width,
+                  height: obstacleRect.height,
+                  child: child);
+            }),
+      );
+    }
+    for (PlacedObject obstacle in obstacles) {
+      children.add(
+        AnimatedBuilder(
+            animation: worldController,
             builder: (context, child) {
               Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
               return Positioned(
@@ -347,7 +428,20 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                   left: obstacleRect.left,
                   width: obstacleRect.width,
                   height: obstacleRect.height,
-                  child: child);
+                  child: Image.asset(
+                    obstacle
+                        .object
+                        .frames[worldController.isAnimating
+                            ? (worldController.lastElapsedDuration
+                                            .inMilliseconds /
+                                        1000 *
+                                        obstacle.object.frequency)
+                                    .floor() %
+                                obstacle.object.frames.length
+                            : 0]
+                        .imagePath,
+                    gaplessPlayback: true,
+                  ));
             }),
       );
     }
@@ -401,8 +495,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                       border: Border.all(color: Colors.black, width: 2),
                       borderRadius: BorderRadius.circular(10)),
                   child: Center(
-                      child: Text(
-                          dinoState == DinoState.dead ? "Reset" : "Jump",
+                      child: Text(_buttonText(),
                           style: GoogleFonts.vt323(fontSize: 48)))),
             ))));
 
