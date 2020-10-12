@@ -169,8 +169,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       if (!worldController.isAnimating) {
         worldController.forward(from: 0);
       }
-      dino.jump();
-      Timer(Duration(milliseconds: 150), dino.releaseJump);
+      setState(() {
+        dino.jump();
+        Timer(Duration(milliseconds: 100), dino.releaseJump);
+      });
     }
   }
 

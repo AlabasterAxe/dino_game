@@ -46,9 +46,6 @@ class Dino extends GameObject {
     jumpButtonHeld = true;
     velocityY = 650;
     state = DinoState.jumping;
-
-    // TODO: Do i need this?
-    displacementY = .01;
   }
 
   void releaseJump() {

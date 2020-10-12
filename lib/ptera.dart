@@ -42,6 +42,6 @@ class Ptera extends GameObject {
 
   @override
   void update(Duration lastUpdate, Duration elapsedTime) {
-    frame = (elapsedTime.inMilliseconds / 100).floor() % 2 + 3;
+    frame = (elapsedTime.inMilliseconds / 200).floor() % 2;
   }
 }
