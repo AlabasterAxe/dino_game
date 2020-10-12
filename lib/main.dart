@@ -4,101 +4,16 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'cactus.dart';
+import 'cloud.dart';
+import 'constants.dart';
 import 'dino-game-layout.dart';
+import 'dino.dart';
+import 'ptera.dart';
 
 void main() {
   runApp(MyApp());
 }
-
-Sprite dino = Sprite()
-  // basically a placeholder because we do the sprite animations separately
-  ..imagePath = "dino/dino_1.png"
-  ..imageWidth = 88
-  ..imageHeight = 94;
-
-List<GameObject> CACTI = [
-  GameObject()
-    ..frames = [
-      Sprite()
-        ..imagePath = "assets/images/cacti/cacti_group.png"
-        ..imageWidth = 104
-        ..imageHeight = 100,
-    ]
-    ..collidable = true
-    ..frequency = 1,
-  GameObject()
-    ..frames = [
-      Sprite()
-        ..imagePath = "assets/images/cacti/cacti_large_1.png"
-        ..imageWidth = 50
-        ..imageHeight = 100,
-    ]
-    ..collidable = true
-    ..frequency = 1,
-  GameObject()
-    ..frames = [
-      Sprite()
-        ..imagePath = "assets/images/cacti/cacti_large_2.png"
-        ..imageWidth = 98
-        ..imageHeight = 100,
-    ]
-    ..collidable = true
-    ..frequency = 1,
-  GameObject()
-    ..frames = [
-      Sprite()
-        ..imagePath = "assets/images/cacti/cacti_small_1.png"
-        ..imageWidth = 34
-        ..imageHeight = 70,
-    ]
-    ..collidable = true
-    ..frequency = 1,
-  GameObject()
-    ..frames = [
-      Sprite()
-        ..imagePath = "assets/images/cacti/cacti_small_2.png"
-        ..imageWidth = 68
-        ..imageHeight = 70,
-    ]
-    ..collidable = true
-    ..frequency = 1,
-  GameObject()
-    ..frames = [
-      Sprite()
-        ..imagePath = "assets/images/cacti/cacti_small_3.png"
-        ..imageWidth = 107
-        ..imageHeight = 70,
-    ]
-    ..collidable = true
-    ..frequency = 1,
-];
-
-GameObject PTERA = GameObject()
-  ..frames = [
-    Sprite()
-      ..imagePath = "assets/images/ptera/ptera_1.png"
-      ..imageHeight = 80
-      ..imageWidth = 92,
-    Sprite()
-      ..imagePath = "assets/images/ptera/ptera_2.png"
-      ..imageHeight = 80
-      ..imageWidth = 92,
-  ]
-  ..collidable = true
-  ..frequency = 5;
-
-GameObject CLOUD = GameObject()
-  ..frames = [
-    Sprite()
-      ..imagePath = "assets/images/cloud.png"
-      ..imageHeight = 27
-      ..imageWidth = 92,
-  ]
-  ..collidable = false
-  ..frequency = 1;
-
-const int GRAVITY_PPSPS = 2000;
-const double RUN_SPEED_ACC_PPSPS = .2;
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -145,29 +60,18 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-enum DinoState {
-  running,
-  jumping,
-  dead,
-  standing,
-}
-
 class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   AnimationController worldController;
-  int dinoFrame = 1;
-  double dinoY = 0;
-  double dinodY = 0;
-  int lastUpdateCallMillis = 0;
-  bool jumpButtonHeld = false;
+  Duration lastUpdateCall = Duration();
   Random rand = Random();
 
-  List<PlacedObject> obstacles;
+  List<GameObject> obstacles;
 
-  List<PlacedObject> scenery;
+  List<Cloud> clouds;
 
+  Dino dino = Dino();
   double runDistance = 0;
   double runSpeed = 30;
-  DinoState dinoState = DinoState.standing;
   double best = 0;
 
   @override
@@ -188,81 +92,56 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     int currentElapsedTimeMillis =
         worldController.lastElapsedDuration.inMilliseconds;
     double elapsedSeconds =
-        ((currentElapsedTimeMillis - lastUpdateCallMillis) / 1000);
+        ((currentElapsedTimeMillis - lastUpdateCall.inMilliseconds) / 1000);
 
     runDistance = max(runDistance + runSpeed * elapsedSeconds, 0);
     runSpeed += RUN_SPEED_ACC_PPSPS * elapsedSeconds;
 
-    DinoGameLayout layout = DinoGameLayout(MediaQuery.of(context).size);
+    Size screenSize = MediaQuery.of(context).size;
 
-    dinoY = max(dinoY + dinodY * elapsedSeconds, 0);
-    if (dinoY > 0 && !jumpButtonHeld) {
-      dinodY -= GRAVITY_PPSPS * elapsedSeconds;
-    }
-    if (dinoY <= 0) {
-      dinoState = DinoState.running;
-    }
+    dino.update(lastUpdateCall, worldController.lastElapsedDuration);
 
-    for (PlacedObject obstacle in obstacles) {
-      Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
-      Rect dinoRect = layout.getDinoRect(dinoY);
+    for (GameObject obstacle in obstacles) {
+      Rect obstacleRect = obstacle.getRect(screenSize, runDistance);
+      Rect dinoRect = dino.getRect(screenSize, runDistance);
       if (dinoRect.deflate(15).overlaps(obstacleRect.deflate(15))) {
         _die();
       }
       if (obstacleRect.right < 0) {
         setState(() {
           obstacles.remove(obstacle);
-          if (runDistance < 200) {
-            obstacles.add(PlacedObject()
-              ..location = Offset(runDistance + rand.nextInt(100) + 50, 0)
-              ..object = CACTI[rand.nextInt(CACTI.length)]);
+          if (runDistance < 1000 || rand.nextDouble() > .5) {
+            obstacles.add(Cactus(
+                location: Offset(runDistance + rand.nextInt(100) + 50, 0)));
           } else {
-            if (rand.nextDouble() > .5) {
-              obstacles.add(PlacedObject()
-                ..location = Offset(runDistance + rand.nextInt(100) + 50, 0)
-                ..object = CACTI[rand.nextInt(CACTI.length)]);
-            } else {
-              obstacles.add(PlacedObject()
-                ..location = Offset(runDistance + rand.nextInt(100) + 100,
-                    rand.nextInt(100).toDouble())
-                ..object = PTERA);
-            }
+            obstacles.add(Ptera(
+                location: Offset(runDistance + rand.nextInt(100) + 100,
+                    rand.nextInt(100).toDouble())));
           }
         });
       }
+      obstacle.update(lastUpdateCall, worldController.lastElapsedDuration);
     }
 
-    for (PlacedObject sceneObject in scenery) {
-      Rect cloudRect = layout.getCloudRect(sceneObject, runDistance);
-      if (cloudRect.right < 0) {
+    for (Cloud cloud in clouds) {
+      if (cloud.getRect(screenSize, runDistance).right < 0) {
         setState(() {
-          scenery.remove(sceneObject);
-          scenery.add(
-            PlacedObject()
-              ..location = Offset(runDistance + rand.nextInt(200) + 200,
-                  rand.nextInt(100) - 10.0)
-              ..object = CLOUD,
-          );
+          clouds.remove(cloud);
+          clouds.add(Cloud(
+              location: Offset(runDistance + rand.nextInt(100) + 200,
+                  rand.nextInt(100) - 10.0)));
         });
       }
     }
 
-    switch (dinoState) {
-      case DinoState.dead:
-        dinoFrame = 6;
-        break;
-      case DinoState.running:
-        dinoFrame = (currentElapsedTimeMillis / 100).floor() % 2 + 3;
-        break;
-      case DinoState.jumping:
-        dinoFrame = 1;
-        break;
-      case DinoState.standing:
-        dinoFrame = 1;
-        break;
-    }
+    lastUpdateCall = worldController.lastElapsedDuration;
+  }
 
-    lastUpdateCallMillis = currentElapsedTimeMillis;
+  void _die() {
+    setState(() {
+      worldController.stop();
+      dino.die();
+    });
   }
 
   void _reset() {
@@ -271,61 +150,32 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         best = runDistance;
       }
       runDistance = 0;
-      dinoState = DinoState.standing;
-      dinoFrame = 1;
-      dinoY = 0.0;
-      dinodY = 0.0;
       obstacles = [
-        PlacedObject()
-          ..location = Offset(200, 0)
-          ..object = CACTI[0],
+        Cactus(location: Offset(200, 0)),
       ];
 
-      scenery = [
-        PlacedObject()
-          ..location = Offset(10, 0)
-          ..object = CLOUD,
-        PlacedObject()
-          ..location = Offset(200, 0)
-          ..object = CLOUD,
-        PlacedObject()
-          ..location = Offset(500, 0)
-          ..object = CLOUD,
+      clouds = [
+        Cloud(location: Offset(10, 0)),
+        Cloud(location: Offset(200, 0)),
+        Cloud(location: Offset(500, 0)),
       ];
+      dino = Dino();
+      lastUpdateCall = Duration();
     });
   }
 
   void _jump() {
-    if ([DinoState.standing, DinoState.running].contains(dinoState)) {
+    if ([DinoState.standing, DinoState.running].contains(dino.state)) {
       if (!worldController.isAnimating) {
         worldController.forward(from: 0);
       }
-      setState(() {
-        jumpButtonHeld = true;
-        dinodY = 650;
-        dinoState = DinoState.jumping;
-        dinoFrame = 1;
-        dinoY = .01;
-      });
-      Timer(Duration(milliseconds: 200), _cancelJump);
+      dino.jump();
+      Timer(Duration(milliseconds: 150), dino.releaseJump);
     }
   }
 
-  void _die() {
-    setState(() {
-      worldController.stop();
-      dinoState = DinoState.dead;
-    });
-  }
-
-  void _cancelJump() {
-    setState(() {
-      jumpButtonHeld = false;
-    });
-  }
-
   String _buttonText() {
-    switch (dinoState) {
+    switch (dino.state) {
       case DinoState.running:
       case DinoState.jumping:
         return "Jump";
@@ -341,7 +191,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
-    DinoGameLayout layout = DinoGameLayout(screenSize);
     List<Widget> children = [
       AnimatedBuilder(
           animation: worldController,
@@ -389,79 +238,51 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             );
           }),
     ];
-    for (PlacedObject sceneObject in scenery) {
+    for (Cloud cloud in clouds) {
       children.add(
         AnimatedBuilder(
             animation: worldController,
-            child: Image.asset(
-              sceneObject
-                  .object
-                  .frames[worldController.isAnimating
-                      ? (worldController.lastElapsedDuration.inMilliseconds /
-                                  1000 *
-                                  sceneObject.object.frequency)
-                              .floor() %
-                          sceneObject.object.frames.length
-                      : 0]
-                  .imagePath,
-              gaplessPlayback: true,
-            ),
+            child: cloud.render(),
             builder: (context, child) {
-              Rect obstacleRect = layout.getCloudRect(sceneObject, runDistance);
+              Rect cloudRect = cloud.getRect(screenSize, runDistance);
               return Positioned(
-                  top: obstacleRect.top,
-                  left: obstacleRect.left,
-                  width: obstacleRect.width,
-                  height: obstacleRect.height,
+                  top: cloudRect.top,
+                  left: cloudRect.left,
+                  width: cloudRect.width,
+                  height: cloudRect.height,
                   child: child);
             }),
       );
     }
-    for (PlacedObject obstacle in obstacles) {
+    for (GameObject obstacle in obstacles) {
       children.add(
         AnimatedBuilder(
             animation: worldController,
             builder: (context, child) {
-              Rect obstacleRect = layout.getObstacleRect(obstacle, runDistance);
+              Rect obstacleRect = obstacle.getRect(screenSize, runDistance);
               return Positioned(
                   top: obstacleRect.top,
                   left: obstacleRect.left,
                   width: obstacleRect.width,
                   height: obstacleRect.height,
-                  child: Image.asset(
-                    obstacle
-                        .object
-                        .frames[worldController.isAnimating
-                            ? (worldController.lastElapsedDuration
-                                            .inMilliseconds /
-                                        1000 *
-                                        obstacle.object.frequency)
-                                    .floor() %
-                                obstacle.object.frames.length
-                            : 0]
-                        .imagePath,
-                    gaplessPlayback: true,
-                  ));
+                  child: obstacle.render());
             }),
       );
     }
     children.add(AnimatedBuilder(
         animation: worldController,
         builder: (context, child) {
-          Rect dinoRect = layout.getDinoRect(dinoY);
+          Rect dinoRect = dino.getRect(screenSize, runDistance);
           return Positioned(
             left: dinoRect.left,
             top: dinoRect.top,
             width: dinoRect.width,
             height: dinoRect.height,
-            child: Image.asset(
-              "assets/images/dino/dino_${dinoFrame}.png",
-              gaplessPlayback: true,
-            ),
+            child: dino.render(),
           );
         }));
 
-    if (dinoState == DinoState.dead) {
+    if (dino.state == DinoState.dead) {
       children.add(Align(
         alignment: Alignment(0, -.5),
         child: Text("GAME OVER", style: GoogleFonts.vt323(fontSize: 48)),
@@ -475,18 +296,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         height: screenSize.height / 4,
         child: GestureDetector(
             onTapDown: (_) {
-              if (dinoState != DinoState.dead) {
+              if (dino.state != DinoState.dead) {
                 _jump();
               }
             },
             onTap: () {
-              if (dinoState == DinoState.dead) {
+              if (dino.state == DinoState.dead) {
                 _reset();
               }
             },
             onTapUp: (_) {
-              if (dinoState != DinoState.dead) {
-                _cancelJump();
+              if (dino.state != DinoState.dead) {
+                dino.releaseJump();
               }
             },
             child: InkWell(
