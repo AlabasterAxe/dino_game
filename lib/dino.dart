@@ -3,7 +3,8 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import 'constants.dart';
-import 'dino-game-layout.dart';
+import 'game-object.dart';
+import 'sprite.dart';
 
 enum DinoState {
   running,

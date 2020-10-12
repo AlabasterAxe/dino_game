@@ -2,7 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
 
-import 'dino-game-layout.dart';
+import 'game-object.dart';
+import 'sprite.dart';
 
 Sprite cloud = Sprite()
   ..imagePath = "assets/images/cloud.png"

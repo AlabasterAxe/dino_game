@@ -1,7 +1,9 @@
-import 'dino-game-layout.dart';
 import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
+
+import 'game-object.dart';
+import 'sprite.dart';
 
 List<Sprite> PTERA_FRAMES = [
   Sprite()

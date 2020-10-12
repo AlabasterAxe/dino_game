@@ -7,8 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'cactus.dart';
 import 'cloud.dart';
 import 'constants.dart';
-import 'dino-game-layout.dart';
 import 'dino.dart';
+import 'game-object.dart';
 import 'ptera.dart';
 
 void main() {
@@ -45,15 +45,6 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key key, this.title}) : super(key: key);
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
@@ -74,6 +65,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   double runSpeed = 30;
   double best = 0;
 
+  // this is used to debounce jump clicks that occur right before the user dies
+  bool canReset = false;
+  bool resetStarted = false;
+
   @override
   void initState() {
     super.initState();
@@ -89,17 +84,17 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     if (!worldController.isAnimating) {
       return;
     }
-    int currentElapsedTimeMillis =
-        worldController.lastElapsedDuration.inMilliseconds;
-    double elapsedSeconds =
-        ((currentElapsedTimeMillis - lastUpdateCall.inMilliseconds) / 1000);
 
+    double elapsedSeconds =
+        ((worldController.lastElapsedDuration.inMilliseconds -
+                lastUpdateCall.inMilliseconds) /
+            1000);
+
+    dino.update(lastUpdateCall, worldController.lastElapsedDuration);
     runDistance = max(runDistance + runSpeed * elapsedSeconds, 0);
     runSpeed += RUN_SPEED_ACC_PPSPS * elapsedSeconds;
 
     Size screenSize = MediaQuery.of(context).size;
-
-    dino.update(lastUpdateCall, worldController.lastElapsedDuration);
 
     for (GameObject obstacle in obstacles) {
       Rect obstacleRect = obstacle.getRect(screenSize, runDistance);
@@ -128,7 +123,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         setState(() {
           clouds.remove(cloud);
           clouds.add(Cloud(
-              location: Offset(runDistance + rand.nextInt(100) + 200,
+              location: Offset(
+                  clouds.last.location.dx + rand.nextInt(100) + 100,
                   rand.nextInt(100) - 10.0)));
         });
       }
@@ -141,6 +137,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     setState(() {
       worldController.stop();
       dino.die();
+      Timer(Duration(milliseconds: 100), () {
+        canReset = true;
+      });
     });
   }
 
@@ -161,6 +160,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       ];
       dino = Dino();
       lastUpdateCall = Duration();
+      canReset = false;
+      resetStarted = false;
     });
   }
 
@@ -300,16 +301,15 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             onTapDown: (_) {
               if (dino.state != DinoState.dead) {
                 _jump();
-              }
-            },
-            onTap: () {
-              if (dino.state == DinoState.dead) {
-                _reset();
+              } else if (canReset) {
+                resetStarted = true;
               }
             },
             onTapUp: (_) {
               if (dino.state != DinoState.dead) {
                 dino.releaseJump();
+              } else if (canReset && resetStarted) {
+                _reset();
               }
             },
             child: InkWell(
