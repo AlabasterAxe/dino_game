@@ -326,12 +326,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(
-        child: Stack(
+      body: Stack(
           alignment: Alignment.center,
           children: children,
         ),
-      ),
     );
   }
 }
