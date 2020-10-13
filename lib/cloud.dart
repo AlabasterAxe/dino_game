@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:dino_game/constants.dart';
 import 'package:flutter/widgets.dart';
 
 import 'game-object.dart';
@@ -19,7 +20,7 @@ class Cloud extends GameObject {
   @override
   Rect getRect(Size screenSize, double runDistance) {
     return Rect.fromLTWH(
-        (location.dx - runDistance) * 2,
+        (location.dx - runDistance) * WORLD_TO_PIXEL_RATIO / 5,
         2 / 7 * screenSize.height - cloud.imageHeight - location.dy,
         cloud.imageWidth.toDouble(),
         cloud.imageHeight.toDouble());

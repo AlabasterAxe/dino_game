@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:dino_game/constants.dart';
 import 'package:flutter/widgets.dart';
 
 import 'game-object.dart';
@@ -18,18 +19,18 @@ List<Sprite> PTERA_FRAMES = [
 
 class Ptera extends GameObject {
   // this is a logical location which is translated to pixel coordinates
-  final Offset location;
+  final Offset worldLocation;
   int frame = 0;
 
-  Ptera({this.location});
+  Ptera({this.worldLocation});
 
   @override
   Rect getRect(Size screenSize, double runDistance) {
     return Rect.fromLTWH(
-        (location.dx - runDistance) * 10,
+        (worldLocation.dx - runDistance) * WORLD_TO_PIXEL_RATIO,
         4 / 7 * screenSize.height -
             PTERA_FRAMES[frame].imageHeight -
-            location.dy,
+            worldLocation.dy,
         PTERA_FRAMES[frame].imageWidth.toDouble(),
         PTERA_FRAMES[frame].imageHeight.toDouble());
   }

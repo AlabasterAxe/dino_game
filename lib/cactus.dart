@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:dino_game/constants.dart';
 import 'package:flutter/widgets.dart';
 
 import 'game-object.dart';
@@ -34,17 +35,16 @@ List<Sprite> CACTI = [
 ];
 
 class Cactus extends GameObject {
-  // this is a logical location which is translated to pixel coordinates
-  final Offset location;
+  final Offset worldLocation;
   final Sprite sprite;
 
-  Cactus({this.location}) : sprite = CACTI[Random().nextInt(CACTI.length)];
+  Cactus({this.worldLocation}) : sprite = CACTI[Random().nextInt(CACTI.length)];
 
   @override
   Rect getRect(Size screenSize, double runDistance) {
     return Rect.fromLTWH(
-        (location.dx - runDistance) * 10,
-        4 / 7 * screenSize.height - sprite.imageHeight - location.dy,
+        (worldLocation.dx - runDistance) * WORLD_TO_PIXEL_RATIO,
+        4 / 7 * screenSize.height - sprite.imageHeight - worldLocation.dy,
         sprite.imageWidth.toDouble(),
         sprite.imageHeight.toDouble());
   }

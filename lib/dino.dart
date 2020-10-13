@@ -22,9 +22,9 @@ Sprite dino = Sprite()
 class Dino extends GameObject {
   int frame = 1;
   DinoState state = DinoState.standing;
-  double displacementY = 0;
-  double velocityY = 0;
   bool jumpButtonHeld = false;
+  double dispY = 0;
+  double velY = 0;
 
   @override
   Widget render() {
@@ -38,15 +38,16 @@ class Dino extends GameObject {
   Rect getRect(Size screenSize, double _) {
     return Rect.fromLTWH(
         screenSize.width / 10,
-        4 / 7 * screenSize.height - dino.imageHeight - displacementY,
+        4 / 7 * screenSize.height - dino.imageHeight - dispY,
         dino.imageWidth.toDouble(),
         dino.imageHeight.toDouble());
   }
 
   void jump() {
-    jumpButtonHeld = true;
-    velocityY = 650;
-    state = DinoState.jumping;
+    if (state != DinoState.jumping || jumpButtonHeld) {
+      jumpButtonHeld = true;
+      velY = 650;
+    }
   }
 
   void releaseJump() {
@@ -63,27 +64,14 @@ class Dino extends GameObject {
     double elapsedSeconds =
         ((elapsedTime.inMilliseconds - lastUpdate.inMilliseconds) / 1000);
 
-    displacementY = max(displacementY + velocityY * elapsedSeconds, 0);
-    if (displacementY > 0 && !jumpButtonHeld) {
-      velocityY -= GRAVITY_PPSPS * elapsedSeconds;
-    }
-    if (displacementY <= 0) {
-      state = DinoState.running;
+    dispY += velY * elapsedSeconds;
+    if (dispY <= 0) {
+      dispY = 0;
+      velY = 0;
+    } else {
+      velY -= GRAVITY_PPSPS * elapsedSeconds;
     }
 
-    switch (state) {
-      case DinoState.dead:
-        frame = 6;
-        break;
-      case DinoState.running:
-        frame = (elapsedTime.inMilliseconds / 100).floor() % 2 + 3;
-        break;
-      case DinoState.jumping:
-        frame = 1;
-        break;
-      case DinoState.standing:
-        frame = 1;
-        break;
-    }
+    frame = (elapsedTime.inMilliseconds / 100).floor() % 2 + 3;
   }
 }

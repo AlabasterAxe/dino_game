@@ -9,6 +9,7 @@ import 'cloud.dart';
 import 'constants.dart';
 import 'dino.dart';
 import 'game-object.dart';
+import 'ground.dart';
 import 'ptera.dart';
 
 void main() {
@@ -22,19 +23,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
-        // This makes the visual density adapt to the platform that you run
-        // the app on. For desktop platforms, the controls will be smaller and
-        // closer together (more dense) than on mobile platforms.
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: MyHomePage(title: 'Flutter Demo Home Page'),
@@ -58,6 +47,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
   List<GameObject> obstacles;
 
+  List<Ground> ground;
+
   List<Cloud> clouds;
 
   Dino dino = Dino();
@@ -78,13 +69,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     worldController.addListener(_update);
 
     _reset();
+    worldController.forward();
   }
 
   void _update() {
-    if (!worldController.isAnimating) {
-      return;
-    }
-
     double elapsedSeconds =
         ((worldController.lastElapsedDuration.inMilliseconds -
                 lastUpdateCall.inMilliseconds) /
@@ -96,26 +84,34 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
     Size screenSize = MediaQuery.of(context).size;
 
+    Rect dinoRect = dino.getRect(screenSize, runDistance);
     for (GameObject obstacle in obstacles) {
       Rect obstacleRect = obstacle.getRect(screenSize, runDistance);
-      Rect dinoRect = dino.getRect(screenSize, runDistance);
+
       if (dinoRect.deflate(15).overlaps(obstacleRect.deflate(15))) {
         _die();
       }
       if (obstacleRect.right < 0) {
         setState(() {
           obstacles.remove(obstacle);
-          if (runDistance < 1000 || rand.nextDouble() > .5) {
-            obstacles.add(Cactus(
-                location: Offset(runDistance + rand.nextInt(100) + 50, 0)));
-          } else {
-            obstacles.add(Ptera(
-                location: Offset(runDistance + rand.nextInt(100) + 100,
-                    rand.nextInt(100).toDouble())));
-          }
+          obstacles.add(Cactus(
+              worldLocation: Offset(runDistance + rand.nextInt(100) + 50, 0)));
         });
       }
       obstacle.update(lastUpdateCall, worldController.lastElapsedDuration);
+    }
+
+    for (Ground groundlet in ground) {
+      if (groundlet.getRect(screenSize, runDistance).right < 0) {
+        setState(() {
+          ground.remove(groundlet);
+          ground.add(Ground(
+              worldLocation: Offset(
+                  ground.last.worldLocation.dx +
+                      groundSprite.imageWidth / WORLD_TO_PIXEL_RATIO,
+                  0)));
+        });
+      }
     }
 
     for (Cloud cloud in clouds) {
@@ -149,14 +145,21 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         best = runDistance;
       }
       runDistance = 0;
+      runSpeed = 30;
       obstacles = [
-        Cactus(location: Offset(200, 0)),
+        Cactus(worldLocation: Offset(200, 0)),
       ];
 
       clouds = [
         Cloud(location: Offset(10, 0)),
         Cloud(location: Offset(200, 0)),
         Cloud(location: Offset(500, 0)),
+      ];
+      ground = [
+        Ground(worldLocation: Offset(0, 0)),
+        Ground(
+            worldLocation:
+                Offset(groundSprite.imageWidth / WORLD_TO_PIXEL_RATIO, 0))
       ];
       dino = Dino();
       lastUpdateCall = Duration();
@@ -194,53 +197,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
-    List<Widget> children = [
-      AnimatedBuilder(
-          animation: worldController,
-          child: Image.asset(
-            "assets/images/scenery.png",
-            fit: BoxFit.cover,
-          ),
-          builder: (context, child) {
-            return Positioned(
-              bottom: screenSize.height / 3,
-              left: -((runDistance * 10) % 2400),
-              height: 20,
-              child: child,
-            );
-          }),
-      AnimatedBuilder(
-          animation: worldController,
-          child: Image.asset(
-            "assets/images/scenery.png",
-            fit: BoxFit.cover,
-          ),
-          builder: (context, child) {
-            return Positioned(
-              bottom: screenSize.height / 3,
-              left: -((runDistance * 10) % 2400) + 2400 - screenSize.width,
-              height: 20,
-              child: child,
-            );
-          }),
-      AnimatedBuilder(
-          animation: worldController,
-          builder: (context, child) {
-            return Positioned(
-              right: 0,
-              left: 0,
-              top: 0,
-              height: screenSize.height / 5,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Text("${runDistance.floor()}",
-                      style: GoogleFonts.vt323(fontSize: 36)),
-                ],
-              ),
-            );
-          }),
-    ];
+    List<Widget> children = [];
     for (Cloud cloud in clouds) {
       children.add(
         AnimatedBuilder(
@@ -253,6 +210,22 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                   left: cloudRect.left,
                   width: cloudRect.width,
                   height: cloudRect.height,
+                  child: child);
+            }),
+      );
+    }
+    for (Ground groundlet in ground) {
+      children.add(
+        AnimatedBuilder(
+            animation: worldController,
+            child: groundlet.render(),
+            builder: (context, child) {
+              Rect groundRect = groundlet.getRect(screenSize, runDistance);
+              return Positioned(
+                  top: groundRect.top,
+                  left: groundRect.left,
+                  width: groundRect.width,
+                  height: groundRect.height,
                   child: child);
             }),
       );
@@ -285,51 +258,27 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           );
         }));
 
-    if (dino.state == DinoState.dead) {
-      children.add(Align(
-        alignment: Alignment(0, -.5),
-        child: Text("GAME OVER", style: GoogleFonts.vt323(fontSize: 48)),
-      ));
-    }
-
-    children.add(Positioned(
-        bottom: 20,
-        left: 40,
-        right: 40,
-        height: screenSize.height / 4,
-        child: GestureDetector(
-            onTapDown: (_) {
-              if (dino.state != DinoState.dead) {
-                _jump();
-              } else if (canReset) {
-                resetStarted = true;
-              }
-            },
-            onTapUp: (_) {
-              if (dino.state != DinoState.dead) {
-                dino.releaseJump();
-              } else if (canReset && resetStarted) {
-                _reset();
-              }
-            },
-            child: InkWell(
-              child: Ink(
-                  decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black, width: 2),
-                      borderRadius: BorderRadius.circular(10)),
-                  child: Center(
-                      child: Text(_buttonText(),
-                          style: GoogleFonts.vt323(fontSize: 48)))),
-            ))));
+    // if (dino.state == DinoState.dead) {
+    //   children.add(Align(
+    //     alignment: Alignment(0, -.5),
+    //     child: Text("GAME OVER", style: GoogleFonts.vt323(fontSize: 48)),
+    //   ));
+    // }
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Stack(
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          dino.jump();
+        },
+        child: Stack(
           alignment: Alignment.center,
           children: children,
         ),
+      ),
     );
   }
 }
