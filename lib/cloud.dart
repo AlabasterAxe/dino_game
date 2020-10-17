@@ -1,35 +1,33 @@
 import 'dart:ui';
 
-import 'package:dino_game/constants.dart';
 import 'package:flutter/widgets.dart';
 
+import 'constants.dart';
 import 'game-object.dart';
 import 'sprite.dart';
 
-Sprite cloud = Sprite()
+Sprite cloudSprite = Sprite()
   ..imagePath = "assets/images/cloud.png"
-  ..imageHeight = 27
-  ..imageWidth = 92;
+  ..imageWidth = 92
+  ..imageHeight = 27;
 
 class Cloud extends GameObject {
-  // this is a logical location which is translated to pixel coordinates
-  final Offset location;
+  final Offset worldLocation;
 
-  Cloud({this.location});
+  Cloud({this.worldLocation});
 
   @override
   Rect getRect(Size screenSize, double runDistance) {
     return Rect.fromLTWH(
-        (location.dx - runDistance) * WORLD_TO_PIXEL_RATIO / 5,
-        2 / 7 * screenSize.height - cloud.imageHeight - location.dy,
-        cloud.imageWidth.toDouble(),
-        cloud.imageHeight.toDouble());
+      (worldLocation.dx - runDistance) * WORLD_TO_PIXEL_RATIO / 5,
+      screenSize.height / 5 - cloudSprite.imageHeight - worldLocation.dy,
+      cloudSprite.imageWidth.toDouble(),
+      cloudSprite.imageHeight.toDouble(),
+    );
   }
 
   @override
   Widget render() {
-    return Image.asset(
-      cloud.imagePath,
-    );
+    return Image.asset(cloudSprite.imagePath);
   }
 }

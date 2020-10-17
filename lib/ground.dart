@@ -1,8 +1,8 @@
 import 'dart:ui';
 
-import 'package:dino_game/constants.dart';
 import 'package:flutter/widgets.dart';
 
+import 'constants.dart';
 import 'game-object.dart';
 import 'sprite.dart';
 
@@ -19,16 +19,15 @@ class Ground extends GameObject {
   @override
   Rect getRect(Size screenSize, double runDistance) {
     return Rect.fromLTWH(
-        (worldLocation.dx - runDistance) * WORLD_TO_PIXEL_RATIO,
-        4 / 7 * screenSize.height - groundSprite.imageHeight - worldLocation.dy,
-        groundSprite.imageWidth.toDouble(),
-        groundSprite.imageHeight.toDouble());
+      (worldLocation.dx - runDistance) * WORLD_TO_PIXEL_RATIO,
+      screenSize.height / 2 - groundSprite.imageHeight,
+      groundSprite.imageWidth.toDouble(),
+      groundSprite.imageHeight.toDouble(),
+    );
   }
 
   @override
   Widget render() {
-    return Image.asset(
-      groundSprite.imagePath,
-    );
+    return Image.asset(groundSprite.imagePath);
   }
 }
