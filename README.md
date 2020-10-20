@@ -1,16 +1,11 @@
-# dino_game
+# Flutter Implementation of Chrome's Dino Game
 
-A new Flutter project.
+This is a demo repo for how to build Chrome's Dino game in vanilla Flutter.
 
-## Getting Started
+## Video
 
-This project is a starting point for a Flutter application.
+This repo corresponds with this YouTube video: https://youtu.be/YlYF1ZdFrp4
 
-A few resources to get you started if this is your first Flutter project:
+## Blog Post
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+If you prefer a written form you can check out the blog post here: https://www.thkp.co/blog/2020/10/19/building-the-chrome-dino-game-from-scratch-in-flutter
