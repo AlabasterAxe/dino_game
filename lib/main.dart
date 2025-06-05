@@ -1,11 +1,9 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 
 import 'cactus.dart';
 import 'cloud.dart';
-import 'constants.dart';
 import 'dino.dart';
 import 'game-object.dart';
 import 'ground.dart';
@@ -20,17 +18,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Dino',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue, visualDensity: VisualDensity.adaptivePlatformDensity),
       home: MyHomePage(title: 'Flutter Dino Home Page'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+  const MyHomePage({super.key, required this.title});
 
   final String title;
 
@@ -38,20 +33,19 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage>
-    with SingleTickerProviderStateMixin {
+class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateMixin {
   Dino dino = Dino();
   double runDistance = 0;
   double runVelocity = 30;
 
-  AnimationController worldController;
+  late final AnimationController worldController;
   Duration lastUpdateCall = Duration();
 
   List<Cactus> cacti = [Cactus(worldLocation: Offset(200, 0))];
 
   List<Ground> ground = [
     Ground(worldLocation: Offset(0, 0)),
-    Ground(worldLocation: Offset(groundSprite.imageWidth / 10, 0))
+    Ground(worldLocation: Offset(groundSprite.imageWidth / 10, 0)),
   ];
 
   List<Cloud> clouds = [
@@ -64,8 +58,7 @@ class _MyHomePageState extends State<MyHomePage>
   void initState() {
     super.initState();
 
-    worldController =
-        AnimationController(vsync: this, duration: Duration(days: 99));
+    worldController = AnimationController(vsync: this, duration: Duration(days: 99));
     worldController.addListener(_update);
     worldController.forward();
   }
@@ -78,11 +71,11 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   _update() {
-    dino.update(lastUpdateCall, worldController.lastElapsedDuration);
+    final lastElapsedDuration = worldController.lastElapsedDuration ?? const Duration();
 
-    double elapsedTimeSeconds =
-        (worldController.lastElapsedDuration - lastUpdateCall).inMilliseconds /
-            1000;
+    dino.update(lastUpdateCall, lastElapsedDuration);
+
+    double elapsedTimeSeconds = (lastElapsedDuration - lastUpdateCall).inMilliseconds / 1000;
 
     runDistance += runVelocity * elapsedTimeSeconds;
 
@@ -98,9 +91,7 @@ class _MyHomePageState extends State<MyHomePage>
       if (obstacleRect.right < 0) {
         setState(() {
           cacti.remove(cactus);
-          cacti.add(Cactus(
-              worldLocation:
-                  Offset(runDistance + Random().nextInt(100) + 50, 0)));
+          cacti.add(Cactus(worldLocation: Offset(runDistance + Random().nextInt(100) + 50, 0)));
         });
       }
     }
@@ -109,10 +100,7 @@ class _MyHomePageState extends State<MyHomePage>
       if (groundlet.getRect(screenSize, runDistance).right < 0) {
         setState(() {
           ground.remove(groundlet);
-          ground.add(Ground(
-              worldLocation: Offset(
-                  ground.last.worldLocation.dx + groundSprite.imageWidth / 10,
-                  0)));
+          ground.add(Ground(worldLocation: Offset(ground.last.worldLocation.dx + groundSprite.imageWidth / 10, 0)));
         });
       }
     }
@@ -121,15 +109,19 @@ class _MyHomePageState extends State<MyHomePage>
       if (cloud.getRect(screenSize, runDistance).right < 0) {
         setState(() {
           clouds.remove(cloud);
-          clouds.add(Cloud(
+          clouds.add(
+            Cloud(
               worldLocation: Offset(
-                  clouds.last.worldLocation.dx + Random().nextInt(100) + 50,
-                  Random().nextInt(40) - 20.0)));
+                clouds.last.worldLocation.dx + Random().nextInt(100) + 50,
+                Random().nextInt(40) - 20.0,
+              ),
+            ),
+          );
         });
       }
     }
 
-    lastUpdateCall = worldController.lastElapsedDuration;
+    lastUpdateCall = lastElapsedDuration;
   }
 
   @override
@@ -138,7 +130,8 @@ class _MyHomePageState extends State<MyHomePage>
     List<Widget> children = [];
 
     for (GameObject object in [...clouds, ...ground, ...cacti, dino]) {
-      children.add(AnimatedBuilder(
+      children.add(
+        AnimatedBuilder(
           animation: worldController,
           builder: (context, _) {
             Rect objectRect = object.getRect(screenSize, runDistance);
@@ -149,22 +142,19 @@ class _MyHomePageState extends State<MyHomePage>
               height: objectRect.height,
               child: object.render(),
             );
-          }));
+          },
+        ),
+      );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(title: Text(widget.title)),
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () {
           dino.jump();
         },
-        child: Stack(
-          alignment: Alignment.center,
-          children: children,
-        ),
+        child: Stack(alignment: Alignment.center, children: children),
       ),
     );
   }

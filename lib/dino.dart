@@ -1,55 +1,25 @@
-import 'dart:ui';
-
 import 'package:flutter/widgets.dart';
 
-import 'cactus.dart';
 import 'constants.dart';
 import 'game-object.dart';
 import 'sprite.dart';
 
-List<Sprite> dino = [
-  Sprite()
-    ..imagePath = "assets/images/dino/dino_1.png"
-    ..imageWidth = 88
-    ..imageHeight = 94,
-  Sprite()
-    ..imagePath = "assets/images/dino/dino_2.png"
-    ..imageWidth = 88
-    ..imageHeight = 94,
-  Sprite()
-    ..imagePath = "assets/images/dino/dino_3.png"
-    ..imageWidth = 88
-    ..imageHeight = 94,
-  Sprite()
-    ..imagePath = "assets/images/dino/dino_4.png"
-    ..imageWidth = 88
-    ..imageHeight = 94,
-  Sprite()
-    ..imagePath = "assets/images/dino/dino_5.png"
-    ..imageWidth = 88
-    ..imageHeight = 94,
-  Sprite()
-    ..imagePath = "assets/images/dino/dino_6.png"
-    ..imageWidth = 88
-    ..imageHeight = 94,
+const dino = [
+  Sprite(imagePath: "assets/images/dino/dino_1.png", imageWidth: 88, imageHeight: 94),
+  Sprite(imagePath: "assets/images/dino/dino_2.png", imageWidth: 88, imageHeight: 94),
+  Sprite(imagePath: "assets/images/dino/dino_3.png", imageWidth: 88, imageHeight: 94),
+  Sprite(imagePath: "assets/images/dino/dino_4.png", imageWidth: 88, imageHeight: 94),
+  Sprite(imagePath: "assets/images/dino/dino_5.png", imageWidth: 88, imageHeight: 94),
+  Sprite(imagePath: "assets/images/dino/dino_6.png", imageWidth: 88, imageHeight: 94),
 ];
 
-enum DinoState {
-  jumping,
-  running,
-  dead,
-}
+enum DinoState { jumping, running, dead }
 
 class Dino extends GameObject {
   Sprite currentSprite = dino[0];
   double dispY = 0;
   double velY = 0;
   DinoState state = DinoState.running;
-
-  @override
-  Widget render() {
-    return Image.asset(currentSprite.imagePath);
-  }
 
   @override
   Rect getRect(Size screenSize, double runDistance) {
@@ -59,6 +29,11 @@ class Dino extends GameObject {
       currentSprite.imageWidth.toDouble(),
       currentSprite.imageHeight.toDouble(),
     );
+  }
+
+  @override
+  Widget render() {
+    return Image.asset(currentSprite.imagePath);
   }
 
   @override
