@@ -20,9 +20,37 @@ Forked to experiment with the game and update Flutter and Dart.
 rm -rf android
 flutter create .
 ```
-* iOS WIP solving compilation issues.
 
 <!-- GitHub-flavored Markdown (GFM) to force image sizes -->
-| Android | Web | MacOS | Linux (Ubuntu) |
-|--------|-----|-----|-------|
-| <img src="doc/android.png" alt="Android screenshot" width="200"/> | <img src="doc/web.png" alt="Web screenshot" width="200"/> | <img src="doc/macos.png" alt="MacOS screenshot" width="200"/> | <img src="doc/linux.png" alt="Linux (Ubuntu) screenshot" width="200"/> |
+| Android | iOS | Web | MacOS | Linux (Ubuntu) |
+|--------|-----|-----|-----|-------|
+| <img src="doc/android.png" alt="Android screenshot" width="200"/> | <img src="doc/ios.png" alt="iOS screenshot" width="200"/> | <img src="doc/web.png" alt="Web screenshot" width="200"/> | <img src="doc/macos.png" alt="MacOS screenshot" width="200"/> | <img src="doc/linux.png" alt="Linux (Ubuntu) screenshot" width="200"/> |
+
+### Fix iOS compilation issue 
+
+> `Error (Xcode): could not find included file 'Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig' in search paths`
+
+1. Execute:
+```bash
+flutter clean
+cd ios
+rm -rf Pods Podfile.lock
+pod deintegrate
+cd ..
+flutter pub get
+```
+
+2. Manually edit `ios/Podfile`, add `platform :ios, '13.0'` on the top of the file.
+
+3. Execute:
+```bash
+cd ios
+pod install
+cd ..
+```
+> `pod deintegrate` removes CocoaPods from the project, `pod install` adds it again. 
+
+4. iOS should be working, run with:
+```bash
+flutter run -d ios
+```
